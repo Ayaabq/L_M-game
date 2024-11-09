@@ -20,7 +20,11 @@ About:
 This project is submitted as a homework assignment for the Search Algorithm subject.
 
 Student Name: ايه مأمون بقله
+
 Class: 3
+
+
+
 Acknowledgments:
 
 Thanks to MS Sally Youssef and ITE-DU for the guidance provided in this assignment.
