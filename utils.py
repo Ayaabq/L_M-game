@@ -6,16 +6,36 @@ from level import Level
 
 
 #التابع المسؤول عن طباعة الرقعة في كل مرة 
+# def print_board(grid, target_cells):
+#     color_abbreviations = {
+#         "red": "R",
+#         "purple": "P",
+#         "grey": "G",
+#         "blocked": "X"  
+#     }
+    
+#     for x, row in enumerate(grid):
+#         row_display = " | ".join(
+#             "O" if (x, y) in target_cells and cell == 'empty' 
+#             else color_abbreviations.get(cell.color, " ") if isinstance(cell, Piece)  
+#             else color_abbreviations.get(cell, " ")
+#             for y, cell in enumerate(row)
+#         )
+#         print(row_display)
+        
+#         if x < len(grid) - 1:
+#             print("-" * (4 * len(grid) - 1))
 def print_board(grid, target_cells):
     color_abbreviations = {
         "red": "R",
         "purple": "P",
         "grey": "G",
-        "blocked": "X"  
+        "blocked": "X"
     }
     
     for x, row in enumerate(grid):
         row_display = " | ".join(
+            "T" if (x, y) in target_cells else
             "O" if (x, y) in target_cells and cell == 'empty' 
             else color_abbreviations.get(cell.color, " ") if isinstance(cell, Piece)  
             else color_abbreviations.get(cell, " ")
@@ -25,6 +45,11 @@ def print_board(grid, target_cells):
         
         if x < len(grid) - 1:
             print("-" * (4 * len(grid) - 1))
+
+    # Display the target cell positions for clarity
+    print("\nTarget cells are at positions:")
+    for target in target_cells:
+        print(f"Row {target[0]}, Column {target[1]}")
 
 
 # هذا التابع يقوم بأخذ مسار ملف الجيسون وثم يحوله إلى مصفوفة اوبجكتات من نوع ليلفل 

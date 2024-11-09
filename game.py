@@ -21,6 +21,107 @@ class Game:
     
     # هذا التابع الذي يقوم بتخزين الحالة 
     # بينسخ الرقعة وبعدين بضيف النسخة عالليست مشان ما ياخد ريفرنس للرقعة تقوم تتغير بعدين 
+    def get_movable_pieces(self):
+        """
+        Returns a list of all positions of pieces that can currently move.
+        """
+        movable_pieces = []
+        for row in range(len(self.board.grid)):
+            for col in range(len(self.board.grid[row])):
+                piece = self.board.grid[row][col]
+                if isinstance(piece, Piece) and piece.color != "grey":
+                    if any(self.can_move_piece((row, col), direction) for direction in ["up", "down", "left", "right"]):
+                        movable_pieces.append((row, col))
+        return movable_pieces
+    def get_grid(self):
+        """Returns the current grid state."""
+        return self.board.grid
+    # def get_valid_moves(self):
+    #     """Returns a list of valid moves as tuples (piece_position, direction)."""
+    #     valid_moves = []
+    #     directions = ["up", "down", "left", "right"]
+
+    #     print("Checking valid moves for all pieces...")  # Debugging line
+
+    #     for piece in self.pieces:
+    #         piece_position = piece.position
+    #         for direction in directions:
+    #             if self.can_move_piece(piece_position, direction):
+    #                 print(f"Valid move found: {piece_position} -> {direction}")  # Debugging line
+    #                 valid_moves.append((piece_position, direction))
+
+    #     print("Completed checking moves.")  # Debugging line
+    #     return valid_moves
+   
+    # def get_valid_moves(self, piece_position):
+    #     """Returns a list of valid target positions for a given piece."""
+    #     valid_moves = []
+    #     directions = ["up", "down", "left", "right"]
+    #     row, col = piece_position
+
+    #     for direction in directions:
+    #         if self.can_move_piece(piece_position, direction):
+    #             # Determine the target position based on the direction
+    #             if direction == "up":
+    #                 target_pos = (row - 1, col)
+    #             elif direction == "down":
+    #                 target_pos = (row + 1, col)
+    #             elif direction == "left":
+    #                 target_pos = (row, col - 1)
+    #             elif direction == "right":
+    #                 target_pos = (row, col + 1)
+
+    #             valid_moves.append(target_pos)
+    #     return valid_moves
+    def get_valid_moves(self, piece_position):
+        """Returns a list of valid target positions for a given piece."""
+        valid_moves = []
+        directions = ["up", "down", "left", "right"]
+        row, col = piece_position
+
+        for direction in directions:
+            if self.can_move_piece(piece_position, direction):
+                # Determine the target position based on the direction
+                if direction == "up":
+                    target_pos = (row - 1, col)
+                elif direction == "down":
+                    target_pos = (row + 1, col)
+                elif direction == "left":
+                    target_pos = (row, col - 1)
+                elif direction == "right":
+                    target_pos = (row, col + 1)
+
+                valid_moves.append(target_pos)
+        return valid_moves
+
+    def make_move(self, move):
+        """
+        Moves a piece on the game board based on the given move.
+        The 'move' parameter should be a tuple containing (piece_position, target_position).
+        """
+        piece_position, target_position = move
+
+        # Validate that the positions are tuples of integers
+        if not isinstance(piece_position, tuple) or not isinstance(target_position, tuple):
+            print(f"Invalid move: {move}. Expected tuples.")
+            return False
+        if not all(isinstance(coord, int) for coord in piece_position + target_position):
+            print(f"Invalid coordinates in move: {move}. Expected integers.")
+            return False
+
+        # Validate that the piece exists at the given position
+        x, y = piece_position
+        piece = self.board.grid[x][y]
+        if not isinstance(piece, Piece):
+            print(f"No movable piece found at {piece_position}.")
+            return False
+
+        # Move the piece to the new position
+        self.move_piece(piece_position, target_position)
+        return True
+    
+  
+  
     def save_state(self):
         grid_copy = [row[:] for row in self.board.grid]
         self.states.append(grid_copy)
@@ -158,7 +259,7 @@ class Game:
         # وبكل مرة بنشيك اذا فزنا  
         if self.board.all_targets_filled():
             print("Congratultions! you fill all target cell and win the game!")
-            exit()
+            # exit()
 
     
     
