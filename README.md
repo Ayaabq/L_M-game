@@ -17,7 +17,7 @@ Search Algorithm Solver
 ## Requirements
 Python 3.x
 
-##About
+## About
 
 This project is submitted as a homework assignment for the Search Algorithm subject.
 
