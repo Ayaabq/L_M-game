@@ -111,9 +111,3 @@ Thanks to  MS Sally Youssef and ITE-DU for the guidance provided in this assignm
 
 ---
 
-
-<<<<<<< HEAD
-Thanks to MS Sally Youssef and ITE-DU for the guidance provided in this assignment.
-
-=======
->>>>>>> 3abda7a3c8422f4d286b564a041e5675cadfec53
