@@ -31,9 +31,10 @@ Class: 3
 
 Thanks to  MS Sally Youssef and ITE-DU for the guidance provided in this assignment.
 ---
----
-## توصيف المسألة كخوارزمية بحث:
 
+
+
+## توصيف المسألة كخوارزمية بحث:
 
 ## **1- فضاء الحالات (State Space)**
 فضاء الحالات في هذه اللعبة هو كل الترتيبات الممكنة للقطع على رقعة اللعب التي تتكون من شبكة `n×n`.  
