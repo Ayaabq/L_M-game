@@ -1,12 +1,12 @@
-Logic Magnets Game:
+# Logic Magnets Game - README
 
 This project is a grid-based game named Logic Magnets, developed as part of my coursework in the Search Algorithms subject at ITE-DU.
 
-Overview:
+## Overview
 
 The game involves moving pieces on a grid with specific logic and behavior for each piece, aiming to achieve designated target positions with the fewest moves. The main components of this game include a search algorithm implemented using BFS,DFS, and other search algorithmes to find the optimal solution, as well as a Pygame-based graphical interface will added in the future.
 
-Features:
+## Features
 
 Grid-based Gameplay: Players can move pieces on a grid according to specific rules and interactions.
 
@@ -14,10 +14,10 @@ Piece Interactions: Includes unique behaviors for pieces, such as attraction and
 
 Search Algorithm Solver
 
-Requirements:
+## Requirements
 Python 3.x
 
-About:
+##About
 
 This project is submitted as a homework assignment for the Search Algorithm subject.
 
@@ -27,9 +27,9 @@ Class: 3
 
 
 
-Acknowledgments:
+## Acknowledgments
 
-Thanks to MS Sally Youssef and ITE-DU for the guidance provided in this assignment.
+Thanks to  MS Sally Youssef and ITE-DU for the guidance provided in this assignment.
 
 
 
@@ -89,7 +89,7 @@ Thanks to MS Sally Youssef and ITE-DU for the guidance provided in this assignme
 - الحالة النهائية هي عندما يتم تحقيق الشروط التالية:
   1. تغطية جميع خانات الهدف بقطع (مغناطيسية أو حديدية).
   2. أن تكون الخانات المغطاة متوافقة مع قواعد اللعبة.
-  3. يتم فحص حالة الفوز باستخدام دالة `check_win` التي تتحقق مما إذا كانت كل خانات الهدف مشغولة بشكل صحيح.
+  3. يتم فحص حالة الفوز باستخدام دالة `all_targets_filled` التي تتحقق مما إذا كانت كل خانات الهدف مشغولة بشكل صحيح.
 
 ---
 
@@ -102,19 +102,8 @@ Thanks to MS Sally Youssef and ITE-DU for the guidance provided in this assignme
 1. تبدأ الخوارزمية بالحالة الابتدائية.
 2. يتم توليد الحالات الجديدة باستخدام الدالة `generate_possible_states`، التي تأخذ الحالة الحالية وتُرجع كل الحالات الممكنة بناءً على الحركات المتاحة.
 3. يتم فحص كل حالة للتأكد مما إذا كانت حالة فوز.
-4. عند العثور على الحالة النهائية، يتم استخراج المسار باستخدام دالة `get_path` التي تُرجع تسلسل الحركات.
+4. عند العثور على الحالة النهائية، يتم استخراج المسار عن طريق تخزينه في كل مرة 
 
 ---
 
-## **6- أهم النقاط في اللعبة**
-- **التفاعلات الديناميكية بين القطع**:
-  1. القطعة الحمراء تؤثر على القطع الأخرى بجذبها نحوها.
-  2. القطعة البنفسجية تؤثر على القطع الأخرى بدفعها بعيدًا عنها.
-  3. القطع الرمادية تتحرك فقط نتيجة تأثير المغناطيسات.
-- **تحديد الأهداف بوضوح**: 
-  يتم تمثيل خانات الهدف بدوائر زرقاء كبيرة، مما يجعلها واضحة للاعب أثناء اللعب.
-- **إعادة استخدام الحالات**:
-  يتم التحقق من عدم تكرار الحالات التي تمت زيارتها بالفعل، مما يقلل من الوقت الضائع أثناء البحث.
-
----
 
