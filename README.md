@@ -30,7 +30,9 @@ Class: 3
 ## Acknowledgments
 
 Thanks to  MS Sally Youssef and ITE-DU for the guidance provided in this assignment.
-
+---
+---
+## توصيف المسألة كخوارزمية بحث:
 
 
 ## **1- فضاء الحالات (State Space)**
