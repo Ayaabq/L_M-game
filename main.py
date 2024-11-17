@@ -21,6 +21,7 @@ from utils import load_levels_from_json
 from bfs import BFS  
 from dfs import DFS  
 from solver import Solver
+from ucs import UCS
 
 def main():
     # Load game level, initialize game instance
@@ -30,14 +31,16 @@ def main():
     game = Game(levels, level_index=level)
     
     # Select search algorithm
-    algorithm_choice = input("Choose search algorithm (BFS/DFS): ").strip().upper()
+    algorithm_choice = input("Choose search algorithm (BFS/DFS/UCS): ").strip().upper()
     search_algorithm = None
     
     if algorithm_choice == "BFS":
         search_algorithm = BFS(game)
     elif algorithm_choice == "DFS":
         search_algorithm = DFS(game)
-
+    elif algorithm_choice == "UCS":  
+        search_algorithm = UCS(game)
+        
     # Ensure a valid algorithm was chosen
     if search_algorithm:
         solver = Solver(game, search_algorithm)

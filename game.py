@@ -13,12 +13,17 @@ class Game:
         self.pieces = self.level.pieces
         # مصفوفة الستيت تخزن بكل مرة حالة الرقعة ولكن افكر في تغيير هذه البنية من أجل خوارزميات البحث القادمة
         self.states = []
+       #هاد الكوست  مشان ال يو سي اس
+        self.cost = 0
         
         # نقوم بإضافة القطع على الرقعة ونحفظ الحالة البدائية
         for piece in self.pieces:
             self.board.place_piece(piece, piece.position)
         self.save_state()
-    
+    def __lt__(self, other):
+        # Modify this logic to fit your cost/priority definition
+        return self.cost < other.cost
+        
     # هذا التابع الذي يقوم بتخزين الحالة 
     # بينسخ الرقعة وبعدين بضيف النسخة عالليست مشان ما ياخد ريفرنس للرقعة تقوم تتغير بعدين 
     def get_movable_pieces(self):
