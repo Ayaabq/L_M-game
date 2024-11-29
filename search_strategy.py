@@ -33,3 +33,15 @@ class SearchStrategy(ABC):
                         possible_moves.append((piece_pos, (x, y)))  
 
         return possible_moves  
+    def evaluate_state(self, game_instance):
+        """
+        Heuristic function to evaluate the current state of the game.
+        Returns the number of target cells that are still empty.
+        Lower heuristic value indicates a state closer to the solution.
+        """
+        grid = game_instance.get_grid()
+        target_cells = game_instance.board.target_cells
+
+        empty_count = sum(1 for x, y in target_cells if grid[x][y] == 'empty')
+
+        return empty_count

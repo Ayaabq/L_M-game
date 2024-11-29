@@ -1,0 +1,1145 @@
+# # سوف أضع تعليقات للتوضيح كيفية عمل مشروعي
+
+
+
+from game import Game
+from utils import load_levels_from_json
+# اذا اردت لعب اللعبة بمفردك ازيل التعليقات وعلق تحت
+# def main():
+#         #   وهنا نقرأ الملفjson بخزين المراحل بملف 
+
+#     levels = load_levels_from_json('levels.json')
+
+#     level = int(input("Choose a level (0 for level 1, 1 for level 2, etc.): "))
+#     game = Game(levels, level_index=level)
+#     game.run()
+
+# if __name__ == "__main__":
+#     main()
+
+
+from bfs import BFS  
+from hill_climbing import HillClimbing
+from dfs import DFS  
+from solver import Solver
+from ucs import UCS
+
+def main():
+    # Load game level, initialize game instance
+    levels = load_levels_from_json('levels.json')
+
+    level = int(input("Choose a level (0 for level 1, 1 for level 2, etc.): "))
+    game = Game(levels, level_index=level)
+    
+    # Select search algorithm
+    algorithm_choice = input("Choose search algorithm (BFS/DFS/UCS/HC for Hill Climbing): ").strip().upper()
+    search_algorithm = None
+    
+    if algorithm_choice == "BFS":
+        search_algorithm = BFS(game)
+    elif algorithm_choice == "DFS":
+        search_algorithm = DFS(game)
+    elif algorithm_choice == "UCS":  
+        search_algorithm = UCS(game)
+    elif algorithm_choice == "HC":  
+        search_algorithm = HillClimbing(game)
+        print("solving...")
+    # Ensure a valid algorithm was chosen
+    if search_algorithm:
+        solver = Solver(game, search_algorithm)
+        solver.find_solution()
+    else:
+        print("Invalid algorithm choice.")
+
+if __name__ == "__main__":
+    main()
+
+
+
+
+
+
+
+
+
+
+
+# في هذا الكلاس يتم تعريف قواعد وقوانين اللعب  وطريقة الحركة 
+
+from board import Board
+from piece import Piece
+from utils import print_board
+
+
+class Game:
+    def __init__(self,levels, level_index=0):
+        self.level = levels[level_index]
+        self.board = Board(self.level.board_size, self.level.target_cells, self.level.block_cells)
+        self.pieces = self.level.pieces
+        # مصفوفة الستيت تخزن بكل مرة حالة الرقعة ولكن افكر في تغيير هذه البنية من أجل خوارزميات البحث القادمة
+        self.states = []
+       #هاد الكوست  مشان ال يو سي اس
+        self.cost = 0
+        
+        # نقوم بإضافة القطع على الرقعة ونحفظ الحالة البدائية
+        for piece in self.pieces:
+            self.board.place_piece(piece, piece.position)
+        self.save_state()
+    def __lt__(self, other):
+        # Modify this logic to fit your cost/priority definition
+        return self.cost < other.cost
+        
+    # هذا التابع الذي يقوم بتخزين الحالة 
+    # بينسخ الرقعة وبعدين بضيف النسخة عالليست مشان ما ياخد ريفرنس للرقعة تقوم تتغير بعدين 
+    def get_movable_pieces(self):
+        """
+        Returns a list of all positions of pieces that can currently move.
+        """
+        movable_pieces = []
+        for row in range(len(self.board.grid)):
+            for col in range(len(self.board.grid[row])):
+                piece = self.board.grid[row][col]
+                if isinstance(piece, Piece) and piece.color != "grey":
+                    if any(self.can_move_piece((row, col), direction) for direction in ["up", "down", "left", "right"]):
+                        movable_pieces.append((row, col))
+        return movable_pieces
+    def get_grid(self):
+        """Returns the current grid state."""
+        return self.board.grid
+    # def get_valid_moves(self):
+    #     """Returns a list of valid moves as tuples (piece_position, direction)."""
+    #     valid_moves = []
+    #     directions = ["up", "down", "left", "right"]
+
+    #     print("Checking valid moves for all pieces...")  # Debugging line
+
+    #     for piece in self.pieces:
+    #         piece_position = piece.position
+    #         for direction in directions:
+    #             if self.can_move_piece(piece_position, direction):
+    #                 print(f"Valid move found: {piece_position} -> {direction}")  # Debugging line
+    #                 valid_moves.append((piece_position, direction))
+
+    #     print("Completed checking moves.")  # Debugging line
+    #     return valid_moves
+   
+    # def get_valid_moves(self, piece_position):
+    #     """Returns a list of valid target positions for a given piece."""
+    #     valid_moves = []
+    #     directions = ["up", "down", "left", "right"]
+    #     row, col = piece_position
+
+    #     for direction in directions:
+    #         if self.can_move_piece(piece_position, direction):
+    #             # Determine the target position based on the direction
+    #             if direction == "up":
+    #                 target_pos = (row - 1, col)
+    #             elif direction == "down":
+    #                 target_pos = (row + 1, col)
+    #             elif direction == "left":
+    #                 target_pos = (row, col - 1)
+    #             elif direction == "right":
+    #                 target_pos = (row, col + 1)
+
+    #             valid_moves.append(target_pos)
+    #     return valid_moves
+    def get_valid_moves(self, piece_position):
+        """Returns a list of valid target positions for a given piece."""
+        valid_moves = []
+        directions = ["up", "down", "left", "right"]
+        row, col = piece_position
+
+        for direction in directions:
+            if self.can_move_piece(piece_position, direction):
+                # Determine the target position based on the direction
+                if direction == "up":
+                    target_pos = (row - 1, col)
+                elif direction == "down":
+                    target_pos = (row + 1, col)
+                elif direction == "left":
+                    target_pos = (row, col - 1)
+                elif direction == "right":
+                    target_pos = (row, col + 1)
+
+                valid_moves.append(target_pos)
+        return valid_moves
+
+    def make_move(self, move):
+        """
+        Moves a piece on the game board based on the given move.
+        The 'move' parameter should be a tuple containing (piece_position, target_position).
+        """
+        piece_position, target_position = move
+
+        # Validate that the positions are tuples of integers
+        if not isinstance(piece_position, tuple) or not isinstance(target_position, tuple):
+            print(f"Invalid move: {move}. Expected tuples.")
+            return False
+        if not all(isinstance(coord, int) for coord in piece_position + target_position):
+            print(f"Invalid coordinates in move: {move}. Expected integers.")
+            return False
+
+        # Validate that the piece exists at the given position
+        x, y = piece_position
+        piece = self.board.grid[x][y]
+        if not isinstance(piece, Piece):
+            print(f"No movable piece found at {piece_position}.")
+            return False
+
+        # Move the piece to the new position
+        self.move_piece(piece_position, target_position)
+        return True
+    
+  
+  
+    def save_state(self):
+        grid_copy = [row[:] for row in self.board.grid]
+        self.states.append(grid_copy)
+
+    # هاد التابع بشيك اذا هي الستيت او يعني هي الرقعة وصلنالها من قبل 
+    def has_reached_state(self, grid):
+        return any(grid == state for state in self.states)
+    
+    # هاد التابع بشوف اذا ممكن القطعة تتحرك او لا
+    def can_move_piece(self ,position,direction):
+        
+        # حنأسند البوزيشن لمتغيرات
+        x, y = position
+
+        # بناء على ستريبنغ الاتجاه ححد البوزيشن الجديد
+        if direction == "up":
+            new_position = (x-1,y)
+        elif direction == "down":
+            new_position = (x +1, y)
+        elif direction == "left":
+            new_position = (x, y-1)
+        elif direction == "right":
+            new_position = (x ,y +1)
+        else:
+            
+            return False
+        
+        # عم بتأكد اذا البوزيشن الجديد جوا حدود المصفوفة
+        if not self.board.within_bounds(new_position):
+            return False
+
+        # بنشيك انو مالو فاضي 
+        is_empty= self.board.is_empty(new_position)
+        is_not_blocked =not self.board.is_blocked(new_position)
+        
+        return is_empty and is_not_blocked
+
+    # هاد التابع  بحرك باتجاه البوزيشن يلي بياخدو 
+    # يعني بنستخدمو مع القطع الحمرا 
+    # بنعطيه البوزيشن الجديد تبعها وهو بحرك باتجاهو 
+    # يعني بيجذب القطع باتجاهو
+    def move_adjacent_pieces_towards(self, new_position):
+        # عم أسند البوزيشن لمتغيرات
+        x,y=new_position
+
+        # هيك بنحرك عاليمين
+        for j in range(y-1, -1, -1):
+            piece = self.board.grid[x][j]
+            if piece != 'empty':  
+                self.move_piece_to((x,j), (x,j+1))
+        # عاليسار
+        for j in range(y + 1, self.board.size):
+            piece = self.board.grid[x][j]
+            if piece != 'empty':
+                self.move_piece_to((x , j ), (x, j-1 ))
+        
+        # من فوق
+        for i in range(x-1, -1 , -1 ):
+            piece = self.board.grid[i][y]
+            if piece != 'empty':
+                self.move_piece_to((i,y), (i+1, y))
+        
+        
+        # من تحت
+        for i in range(x+1, self.board.size):
+            piece = self.board.grid[i][y]
+            if piece != 'empty':
+                self.move_piece_to( ( i , y), (i-1, y))
+
+    
+    
+   # هاد التابع لتحريك القطع هاد بستدعيه من جوا اللعبة يعني مو يلي اليوزر بحرك فيه القطع
+   # يعني هون ما بعالج ااذا في حالات دحل غلط لان اصلا عم استدعيه من توابع اللعبة  اما يلي بحرك فيه اليوزر بعالج حالات اكتر 
+    def move_piece_to(self,current_position , new_position ):
+        # عم نشيك انو البوزيشن مو برا المصفوفة ومو فاضي يعني فيو قطعة وجوا المصفوفة
+        if self.board.within_bounds(new_position) and self.board.is_empty(new_position):
+            # هون حنجيب القطعة
+            piece = self.board.grid[current_position[0]][current_position[1]]
+
+            # حنتأكد انو الشي يلي بالبوزيشن هو قطعة معدنية او حديدية يعني مالو بلوك مثلا
+            if isinstance(piece, Piece):
+                # هون حنحرك للبوزيشن الجديد
+                self.board.grid[current_position[0]][current_position[1]]='empty'
+                piece.position =new_position
+                self.board.place_piece( piece , new_position)
+
+
+   
+    #هاد التابع لما اليوزر بدو يحرك
+    def move_piece(self, current_position, new_position):
+        x, y = current_position
+
+        # بنتأكد  انو البوزيشن يلي اختارو اليوزر ليحركو جوا حدود الغريد
+        if not self.board.within_bounds(current_position ):
+            print(" current_position is out of buonds"  )
+            return
+
+        # بنتأكد من البوزيشن الجديد انو جوا حدود الغريد
+        if not self.board.within_bounds(new_position):
+            print("new position out of bound ")
+            return
+
+        # بنشبك انو البوزيشن الجديد متاح
+        if not self.board.is_empty(new_position) or self.board.is_blocked(new_position):
+            print("possition occupied or block")
+            return
+
+        # حنجيب القعطة يلي بالبوزيشن الحالي
+        piece = self.board.grid[x][y]
+
+        # بنتأكد انو القطعة بتقدر تتحرك مالها رمادية مثلا
+        if piece == 'empty':
+            print("no piece at the specefied position ")
+            return
+        if piece.color == "grey":
+            print("you cannot move a grey piece directly")
+            return
+
+        # هون حنغير البوزيشن
+        # بنفضي القديم وبنعبي الجديد
+        self.board.grid[x][y] ='empty'
+        piece.position=new_position
+        self.board.place_piece(piece , new_position )
+        print(f"moved {piece} to {new_position}")
+
+        # هون بنشوف كيف الحركة حتحرك باقي القطع يعني اذا حمرة شو واذا بنفسجية شو
+        if piece.color == "red":
+            self.move_adjacent_pieces_towards(new_position)
+        elif piece.color == "purple":
+            self.move_adjacent_pieces_away(new_position)
+
+        # بنخزن الحالة لان يعني بنكون لعبنا مرحلة وخلصنا 
+        self.save_state()
+
+        # وبكل مرة بنشيك اذا فزنا  
+        if self.board.all_targets_filled():
+            print("Congratultions! you fill all target cell and win the game!")
+            # exit()
+
+    
+    
+
+    # def move_connected_pieces_away(self, new_position, direction):
+    #     move=False
+    #     if direction not in ["up", "down", "left", "right"]:
+    #         raise ValueError("Invalid direction. Must be 'up', 'down', 'left', or 'right'.")
+        
+    #     line_of_pieces = self.get_connected_pieces(new_position, direction)
+        
+    #     # if not line_of_pieces:
+    #     #     return False  
+
+    #     last_piece_position = line_of_pieces[-1]
+    #     lx, ly = last_piece_position
+
+    #     if direction == "up":
+    #         after_line_position = (lx - 1, ly)
+    #     elif direction == "down":
+    #         after_line_position = (lx + 1, ly)
+    #     elif direction == "left":
+    #         after_line_position = (lx, ly - 1)
+    #     elif direction == "right":
+    #         after_line_position = (lx, ly + 1)
+
+    #     if self.board.within_bounds(after_line_position) and self.board.is_empty(after_line_position):
+    #         # Move each piece in the line one step away in the specified direction
+    #         for pos in reversed(line_of_pieces):
+    #             self.move_piece_away(pos, direction)
+    #         move= True  # Movement occurred
+    #     return move
+
+      #هات التابع بنستعملو لتحريك القطع بعيدا عن قطعة النبفسجية 
+      # البنفسجية بتحرك قطعة او مجموعة قطع متصلة فهاد التابع بياخد اول قطعة قريبة من البنفسجية وبشوف اذا الها قطع ملزوقين فيها وبحركن معها
+    def move_connected_pieces_away(self,new_position,direction):
+        move = False
+
+        if direction not in ["up","down" ,"left","right" ]:
+            raise ValueError("invald direction")
+            # if not line_of_pieces:
+                 #     return False  
+
+        # بنجيب ليستة قطع متصلة من التابع تبع الغيت
+        line_of_pieces = self.get_connected_pieces(new_position ,direction)
+
+        # عم ندور عالبوزيشن او الخطوة يلي بعد القطع
+        last_piece_position =line_of_pieces[-1]
+        lx,ly =last_piece_position
+
+        #بنحدد المكان الجديد بعد القطع
+        if direction =="up":
+            after_line_position = (lx-1, ly)
+        elif direction=="down":
+            after_line_position = (lx+1, ly)
+        elif direction=="left":
+            after_line_position = (lx, ly-1 )
+        elif direction == "right":
+            after_line_position = (lx, ly+1 )
+
+        # بنحرك القطعة اذا ممكن
+        if self.board.within_bounds(after_line_position) and self.board.is_empty(after_line_position):
+            for pos in reversed(line_of_pieces):
+                self.move_piece_away(pos,direction)
+            move=True
+
+        return move
+
+
+    
+     # هاد التابع بشوف مجاورات النهدية مشان يدفشن ويحركن
+    # جواتو بنستدعي التابع يلي فوقو تبع التحريك
+    # يعني هاد ما بحرك فعليا بس شغلتو يجب المجاورات ويبعتن لهداك
+    def move_adjacent_pieces_away(self,new_position):
+        directions =["up","down","left", "right"  ]
+
+        
+        for direction in directions:
+            x,y= new_position
+            while True:
+                # حمخزن الاحداثيات قبل ما تتغير
+                x1,y1 = x, y
+
+                # حنغير الاحداثيات بناء عالاتجاه
+                if direction =="up":
+                    x-=1
+                elif direction== "down":
+                    x+=1
+                elif direction == "left":
+                    y-=1
+                elif direction =="right":
+                    y+=1
+
+                # بنوقف اذا طلعنا برا المصفوفة
+                if not self.board.within_bounds((x, y)):
+                    break
+
+                # بنستدعي تابع التحرك اذا لقينا قطعة يعني مالا فاضية ولا بلوك
+                if self.board.grid[x][y]!='empty' and   self.board.grid[x][y] !='block':
+                    if self.move_connected_pieces_away((x1,y1) , direction):
+                        break
+
+ #هاد التابع بجيب الخلايا يلي فيها قطع متصلين
+    def get_connected_pieces(self,  start_position ,direction):
+        connected =[]
+        x,  y =start_position
+        while True:
+            if direction== "up":
+                x-=1
+            elif direction == "down":
+                x+=1
+            elif direction == "left":
+                y-=1
+            elif direction == "right":
+                y+=1
+            if not self.board.within_bounds((x, y)) or self.board.is_empty((x, y)):
+                break
+    
+            connected.append((x, y))
+            
+        return connected
+
+    def get_direction(self, from_position, to_position):
+        fx, fy = from_position
+        tx, ty = to_position
+        if fx == tx:
+            return "right" if fy < ty else "left"
+        elif fy == ty:
+            return "down" if fx < tx else "up"
+    # هاد التابع بحرك قطعة وحدة بعكس جهة البنفسحية
+    # شغلتو انو بنستدعيه من التابع يلي بحرك القطع المتصلة فوق
+    def move_piece_away(self, current_position, direction):
+        cx, cy = current_position
+
+        if direction == "up":
+            new_position = (cx-1, cy)
+        elif direction == "down":
+            new_position = (cx+1, cy)
+        elif direction == "left":
+            new_position = (cx, cy-1)
+        elif direction == "right":
+            new_position =(cx, cy+1)
+        #حنصل عم نحرك بالاتجاه لحتى نلاقي خلية فاضية
+        while self.board.within_bounds(new_position) and not self.board.is_empty(new_position):
+            if direction == "up":
+                new_position = (new_position[0]- 1 , new_position[1])
+            elif direction == "down":
+                new_position = (new_position[0]+1 , new_position[1])
+            elif direction == "left":
+                new_position = (new_position[0],new_position[1]-1)
+            elif direction == "right":
+                new_position = (new_position[0],new_position[1]+ 1 )
+        #اذا لقينا خلية فاضية وجوا حدود المصفوفة بنحرك
+        if self.board.within_bounds(new_position) and self.board.is_empty(new_position):
+            piece = self.board.grid[cx][cy]
+            if isinstance(piece, Piece):
+                self.board.grid[cx][cy] = 'empty'
+                piece.position = new_position
+                self.board.place_piece(piece, new_position)
+
+    def run(self):
+        while True:
+            print_board(self.board.grid, self.level.target_cells)
+            print("Target cels:", self.level.target_cells)
+
+            try:
+                current_x = int(input("Enter the row of the piece to move: "))
+                current_y = int(input("Enter the column of the piece to move: "))
+                new_x = int(input("Enter the new row: "))
+                new_y = int(input("Enter the new column: "))
+                self.move_piece((current_x, current_y), (new_x, new_y))
+            except ValueError:
+                print("Invalid input, enter numbers.")
+    
+    
+    
+    
+  # هذا الكاس يعبر عن الرقعة 
+# يتم تخزين فيه الرقعة بحد ذاتها ولا يركز بشكل كبير على القطع
+# الرقعة من خيث الخلايا التي يجب ملئها والخلايا البلوك وحجم الرقعة ...
+class Board:
+    def __init__(self, size, target_cells, block_cells):
+        self.size = size
+        # بالبداية سنعرف مصفوفة ثنائية وستكون كلها فارغة اي تحولي كلمة فارغ
+        self.grid = [['empty' for _ in range(size)] for _ in range(size)]
+        self.target_cells = target_cells  
+        self.block_cells = block_cells  
+        
+        # مكان الخلايا البلوك حنعلمو بكلمة بلوك
+        for x, y in block_cells:
+            self.grid[x][y] = 'blocked'
+
+    def place_piece(self, piece, position):
+        x, y = position
+        if (x, y) not in self.block_cells:
+            self.grid[x][y] = piece
+
+    def is_empty(self, position):
+        x, y = position
+        return self.grid[x][y] == 'empty'
+
+    def within_bounds(self, position):
+        x, y = position
+        return 0 <= x < self.size and 0 <= y < self.size
+
+    def is_blocked(self, position):
+       
+        x, y = position
+        return self.grid[x][y] == 'blocked'
+
+    def all_targets_filled(self):
+        return all(self.grid[x][y] != 'empty' for x, y in self.target_cells)
+
+
+
+# هذا الكلاس عبارة عن كلاس الليفل 
+# تعبر عن اللعبة بالحالة البدائية لكل مرحلة  intityيمكننا اعتبارة ك
+# وهو أعلى طبقة بتتواصل مع الجيسون فورا 
+
+from piece import Piece
+
+class Level:
+    def __init__(self,board_size  , target_cells,block_cells,pieces):
+        self.board_size = board_size
+        self.target_cells = target_cells
+        self.block_cells = block_cells
+        self.pieces = pieces
+
+
+# هون عرفت  مرحلة وبعدين مصفوفة مراحل، قبل ما ضيف ملف الجيسون كنت عم استعملا 
+# هلق ما الها استعمال 
+l1 = Level(
+    board_size=5,
+    target_cells=[(0,2), (1, 3), (4,4)],
+    block_cells=[(2 , 2), (3,3)],
+    pieces=[
+        Piece(color="red",is_magnetic=True, position=(0,0)),
+        Piece(color="purple", is_magnetic=True, position=(1 ,1)),
+        Piece(color="purple" , is_magnetic=True ,position=(1 ,2)),
+        Piece(color="grey" ,is_magnetic=False, position=(2,2))
+    ]
+)
+
+levels = [l1]
+
+
+
+
+# هذا الكلاس يمثل القعطة بحد ذاتها معدينة مغناطيسية ..
+
+
+class Piece:
+    def __init__(self, color, is_magnetic, position):
+        self.color = color
+        self.is_magnetic = is_magnetic
+        self.position = position
+
+    def __repr__(self):
+        return f"{self.color} {'Magnetic' if self.is_magnetic else 'Metal'}"
+        
+        
+        
+        
+# في هذا الملف يوجد توابع مساعدة فقط لا علاقة لها بأي كلاس
+
+from piece import Piece  
+import json
+from level import Level
+
+
+#التابع المسؤول عن طباعة الرقعة في كل مرة 
+# def print_board(grid, target_cells):
+#     color_abbreviations = {
+#         "red": "R",
+#         "purple": "P",
+#         "grey": "G",
+#         "blocked": "X"  
+#     }
+    
+#     for x, row in enumerate(grid):
+#         row_display = " | ".join(
+#             "O" if (x, y) in target_cells and cell == 'empty' 
+#             else color_abbreviations.get(cell.color, " ") if isinstance(cell, Piece)  
+#             else color_abbreviations.get(cell, " ")
+#             for y, cell in enumerate(row)
+#         )
+#         print(row_display)
+        
+#         if x < len(grid) - 1:
+#             print("-" * (4 * len(grid) - 1))
+def print_board(grid, target_cells):
+    color_abbreviations = {
+        "red": "R",
+        "purple": "P",
+        "grey": "G",
+        "blocked": "X"
+    }
+    
+    for x, row in enumerate(grid):
+        row_display = " | ".join(
+            "T" if (x, y) in target_cells else
+            "O" if (x, y) in target_cells and cell == 'empty' 
+            else color_abbreviations.get(cell.color, " ") if isinstance(cell, Piece)  
+            else color_abbreviations.get(cell, " ")
+            for y, cell in enumerate(row)
+        )
+        print(row_display)
+        
+        if x < len(grid) - 1:
+            print("-" * (4 * len(grid) - 1))
+
+    # Display the target cell positions for clarity
+    print("\nTarget cells are at positions:")
+    for target in target_cells:
+        print(f"Row {target[0]}, Column {target[1]}")
+
+
+# هذا التابع يقوم بأخذ مسار ملف الجيسون وثم يحوله إلى مصفوفة اوبجكتات من نوع ليلفل 
+def load_levels_from_json(json_file):
+    with open(json_file, 'r') as f:
+        data = json.load(f)
+
+    levels = []
+    for level_data in data:
+        pieces = [Piece(piece_data['color'], piece_data['is_magnetic'], piece_data['position']) for piece_data in level_data['pieces']]
+        level = Level(
+            board_size=level_data['board_size'],
+            target_cells=level_data['target_cells'],
+            block_cells=level_data['block_cells'],
+            pieces=pieces
+        )
+        levels.append(level)
+    
+    return levels
+
+
+
+
+from utils import print_board  
+
+class Solver:
+    def __init__(self, game, search_algorithm):
+        self.game = game
+        self.search_algorithm = search_algorithm
+
+    def find_solution(self):
+        """Finds and prints the solution using the selected search algorithm."""
+        solution = self.search_algorithm.solve()
+        
+        if solution:
+            print("Solution found in moves:", len(solution))
+            self.print_solution_steps(solution)
+        else:
+            print("No solution found.")
+
+    def print_solution_steps(self, solution):
+        """Applies each move in the solution sequence and prints the grid after each move."""
+        print("Starting grid:")
+        print_board(self.game.get_grid(), self.game.board.target_cells)  # Print initial state
+        
+        for move in solution:
+            print(f"\nApplying move: {move}")
+            self.game.make_move(move)
+            print_board(self.game.get_grid(), self.game.board.target_cells)
+
+
+
+
+
+
+
+
+#في هذا الكلاس  يوجد كل خوارزميات البحث 
+#يعني هو كلاس اب لكل الكلاسات تبع الخوارزميات 
+from abc import ABC, abstractmethod
+
+class SearchStrategy(ABC):
+    def __init__(self, game):
+        self.game = game
+        self.visited = set()  # دايما في عنا سيت الفيزيتد
+
+    @abstractmethod
+    def solve(self):
+        """هاد التابع بطبق خوارزمية البحث وبرجع خطوات الحل يعني الحركات لوصلنا للحل"""
+        pass
+
+    def get_state(self, game_instance):
+        """
+        هاد التابع برجع هاش تيبل للحالات يعني مشان ما نرجع لحالة مزارة
+        """
+        return tuple(tuple(row) for row in game_instance.get_grid())
+
+    def generate_all_possible_moves(self, game_instance):
+        
+        # -- جنشوف الحركات الممكنة لكل قطعة --
+        possible_moves = []
+        movable_pieces = game_instance.get_movable_pieces()  
+        grid = game_instance.get_grid() 
+
+        for piece_pos in movable_pieces:
+            for x in range(len(grid)):
+                for y in range(len(grid[0])):
+                    # print(x,y)
+                    if grid[x][y] == 'empty':  
+                        possible_moves.append((piece_pos, (x, y)))  
+
+        return possible_moves  
+    def evaluate_state(self, game_instance):
+        """
+        Heuristic function to evaluate the current state of the game.
+        Returns the number of target cells that are still empty.
+        Lower heuristic value indicates a state closer to the solution.
+        """
+        grid = game_instance.get_grid()
+        target_cells = game_instance.board.target_cells
+
+        empty_count = sum(1 for x, y in target_cells if grid[x][y] == 'empty')
+
+        return empty_count
+
+
+from collections import deque
+import copy
+from search_strategy  import SearchStrategy
+
+
+class BFS(SearchStrategy):
+    def __init__(self, game):
+        super().__init__(game)
+
+    def solve(self):
+        queue = deque([(self.game, [])])  
+        initial_state = self.get_state(self.game)
+
+        if self.game.board.all_targets_filled():
+            return []  
+
+        self.visited.add(initial_state)
+
+        while queue:
+            current_game, move_sequence = queue.popleft()
+            possible_moves = self.generate_all_possible_moves(current_game)
+
+            for move in possible_moves:
+                
+                new_game = copy.deepcopy(current_game)
+                new_game.make_move(move)
+                new_state = self.get_state(new_game)
+
+                if new_game.board.all_targets_filled():
+                    return move_sequence + [move]
+
+                if new_state not in self.visited:
+                    # print(self.visited)
+                    self.visited.add(new_state)
+                    # print(self.visited)
+                    queue.append((new_game, move_sequence + [move]))
+        # print(queue.pop())
+        
+        return None
+
+
+
+
+
+from collections import deque
+import copy
+from search_strategy import SearchStrategy
+
+
+import copy
+
+class DFS(SearchStrategy):
+    def __init__(self, game):
+        super().__init__(game)
+
+    def solve(self):
+        
+        if self.game.board.all_targets_filled():
+            return []  
+
+        self.visited.clear()  
+        max_depth = 10  #  عمق شجرة البحث لان لو تركناها عراحتها كتير بتطول لتلاقي حل واصلا باللعبة مافي مرحلة بدا اكتر من عشر خطوات
+        return self.dfs(self.game, [], 0, max_depth)
+
+    def dfs(self, current_game, move_sequence, depth, max_depth):
+        if depth > max_depth:
+            
+            return None
+        
+        current_state = self.get_state(current_game)
+        if current_state in self.visited:
+            
+            return None
+
+        self.visited.add(current_state)
+
+        if current_game.board.all_targets_filled():
+            # print(move_sequence)
+            return move_sequence
+
+        possible_moves = self.generate_all_possible_moves(current_game)
+
+        # TODO:  أنو يدورعالأقصر يصير
+        for move in possible_moves:
+            new_game = copy.deepcopy(current_game)  
+            new_game.make_move(move)
+
+            
+            solution = self.dfs(new_game, move_sequence + [move], depth + 1, max_depth)
+            if solution:
+                return solution  
+
+        return None  
+
+    
+import copy
+from heapq import heappop, heappush  
+from search_strategy import SearchStrategy
+
+class UCS(SearchStrategy):
+    def __init__(self, game):
+        super().__init__(game)
+
+    def solve(self):
+        priority_queue = []
+        initial_state = self.get_state(self.game)
+
+        if self.game.board.all_targets_filled():
+            return []  
+            
+        heappush(priority_queue, (0, self.game, []))
+        self.visited.clear()
+        self.visited.add(initial_state)
+
+        while priority_queue:
+            current_cost, current_game, move_sequence = heappop(priority_queue)
+
+            if current_game.board.all_targets_filled():
+                return move_sequence
+
+            possible_moves = self.generate_all_possible_moves(current_game)
+
+            for move in possible_moves:
+                new_game = copy.deepcopy(current_game)
+                new_game.make_move(move)
+                new_state = self.get_state(new_game)
+
+                if new_state not in self.visited:
+                    self.visited.add(new_state)
+                    new_cost = current_cost + 1
+                    heappush(priority_queue, (new_cost, new_game, move_sequence + [move]))
+
+        return None  
+ 
+ 
+    
+import copy
+from search_strategy import SearchStrategy
+
+
+class HillClimbing(SearchStrategy):
+    def __init__(self, game):
+        super().__init__(game)
+
+    def solve(self):
+        current_game = copy.deepcopy(self.game)  
+        current_state = self.get_state(current_game)  
+        current_cost = self.evaluate_state(current_game)  
+
+        if current_game.board.all_targets_filled(): 
+            print("Solution found at the initial state.")
+            return []  
+
+        self.visited.clear()  
+        self.visited.add(current_state) 
+        move_sequence = [] 
+
+        while True:
+            possible_moves = self.generate_all_possible_moves(current_game)  
+            best_neighbor = None
+            best_move = None
+            best_cost = current_cost
+
+            
+            for move in possible_moves:
+                new_game = copy.deepcopy(current_game)  
+                new_game.make_move(move)  
+                new_state = self.get_state(new_game)  
+                new_cost = self.evaluate_state(new_game)  # Evaluate the new state
+
+                if new_cost < best_cost and new_state not in self.visited:
+                    # If the neighbor is better and unvisited, select it
+                    best_neighbor = new_game
+                    best_move = move
+                    best_cost = new_cost
+
+            if best_neighbor and best_cost < current_cost:
+                # Move to the best neighbor
+                current_game = best_neighbor
+                current_state = self.get_state(current_game)
+                current_cost = best_cost
+                self.visited.add(current_state)  
+                move_sequence.append(best_move)  
+
+                if current_game.board.all_targets_filled():
+                    print("Congratulations! You filled all target cells and won the game!")
+                    return move_sequence  # Immediately return after finding the solution
+            else:
+                # No better neighbor found, terminate (local maximum reached)
+                if not current_game.board.all_targets_filled():
+                    print("Local maximum reached or no solution found.")
+                    return None  # No solution found
+    
+    
+[
+    {
+        "board_size": 5,
+        "target_cells": [[0, 2], [1, 3], [4, 4]],
+        "block_cells": [[2, 2], [3, 3],[3, 0]],
+        "pieces": [
+            {"color": "red", "is_magnetic": true, "position": [0, 0]},
+            {"color": "red", "is_magnetic": true, "position": [0, 4]},
+            {"color": "purple", "is_magnetic": true, "position": [1, 1]},
+            {"color": "purple", "is_magnetic": true, "position": [1, 2]},
+            {"color": "grey", "is_magnetic": false, "position": [2, 1]}
+        ]
+    },
+    {
+        "board_size": 4,
+        "target_cells": [[1, 1], [1, 3]],
+        "block_cells": [],
+        "pieces": [
+           
+            {"color": "purple", "is_magnetic": true, "position": [3, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [1, 2]}
+        ]
+    },
+    {
+        "board_size": 5,
+        "target_cells": [[0, 2], [2, 0], [2, 2],[2,4],[4,2]],
+        "block_cells": [],
+        "pieces": [
+            {"color": "purple", "is_magnetic": true, "position": [4, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [1, 2]},
+            {"color": "grey", "is_magnetic": false, "position": [2, 1]},
+            {"color": "grey", "is_magnetic": false, "position": [2, 3]},
+            {"color": "grey", "is_magnetic": false, "position": [3, 2]}
+        ]
+    }, 
+    {
+        "board_size": 4,
+        "target_cells": [[0, 3],[2, 3]],
+        "block_cells": [[0, 0], [0, 1],[0, 2],[3,0],[3,1],[3,2],[3,3]],
+        "pieces": [
+          
+            {"color": "purple", "is_magnetic": true, "position": [2, 0]},
+          
+            {"color": "grey", "is_magnetic": false, "position": [1, 2]}
+        ]
+    },
+    {
+        "board_size": 5,
+        "target_cells": [[0, 0],[0, 2],[4,1]],
+        "block_cells": [[0, 3], [0, 4],[1, 3],[1,4],[2,3],[2,4],[3,3],[3,4],[4,3],[4,4],[1,0],[3,0]],
+        "pieces": [
+          
+            {"color": "purple", "is_magnetic": true, "position": [2, 0]},
+          
+            {"color": "grey", "is_magnetic": false, "position": [1, 1]},
+            {"color": "grey", "is_magnetic": false, "position": [3, 1]}
+        ]
+    },
+    {
+        "board_size": 4,
+        "target_cells": [[0, 0],[0, 2]],
+        "block_cells": [[0, 3],[1, 3],[2,3],[3,3],[0,1],[1,1],[2,1]],
+        "pieces": [
+          
+            {"color": "purple", "is_magnetic": true, "position": [3, 1]},
+          
+            {"color": "grey", "is_magnetic": false, "position": [1, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [2, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [1, 2]},
+            {"color": "grey", "is_magnetic": false, "position": [2, 2]}
+        ]
+    },
+    {
+        "board_size": 5,
+        "target_cells": [[0, 3],[1, 2],[2,3]],
+        "block_cells": [[3, 0],[3, 1],[3,2],[3,3],[3,4],[4,0],[4,1],[4,2],[4,3],[4,4]],
+        "pieces": [
+          
+            {"color": "purple", "is_magnetic": true, "position": [2, 0]},
+          
+            {"color": "grey", "is_magnetic": false, "position": [1, 1]},
+            {"color": "grey", "is_magnetic": false, "position": [1, 3]}
+        ]  
+    },
+    {
+        "board_size": 5,
+        "target_cells": [[0, 0],[2, 3],[4,4]],
+        "block_cells": [[0, 4],[1, 4],[2,4],[3,4],[4,4],[4,0],[4,1],[4,2]],
+        "pieces": [
+          
+            {"color": "purple", "is_magnetic": true, "position": [2, 1]},
+          
+            {"color": "grey", "is_magnetic": false, "position": [1, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [2, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [3, 1]},
+            {"color": "grey", "is_magnetic": false, "position": [3, 2]}
+        ]  
+    },
+    {
+        "board_size": 4,
+        "target_cells": [[0, 0],[0, 2],[2,2]],
+        "block_cells": [[0, 3],[1, 3],[2,3],[3,3]],
+        "pieces": [
+          
+            {"color": "purple", "is_magnetic": true, "position": [2, 0]},
+          
+            {"color": "grey", "is_magnetic": false, "position": [1, 1]},
+            {"color": "grey", "is_magnetic": false, "position": [1, 2]}
+        ]  
+    }, 
+    {
+        "board_size": 7,
+        "target_cells": [[0, 1],[0, 6]],
+        "block_cells": [[1,0],[1,1],[1,2],[1,3],[1,4],[1,5],[1,6],[2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,6]],
+        "pieces": [
+          
+            {"color": "purple", "is_magnetic": true, "position": [0, 0]},
+          
+            {"color": "grey", "is_magnetic": false, "position": [0, 3]},
+            {"color": "grey", "is_magnetic": false, "position": [0, 5]}
+        ]  
+    },
+    {
+        "board_size": 4,
+        "target_cells": [[1, 1],[1, 3],[3,0],[3,3]],
+        "block_cells": [],
+        "pieces": [
+          
+            {"color": "purple", "is_magnetic": true, "position": [0, 0]},
+          
+            {"color": "grey", "is_magnetic": false, "position": [2, 2]},
+            {"color": "grey", "is_magnetic": false, "position": [2, 3]},
+             {"color": "grey", "is_magnetic": false, "position": [3, 1]}
+        ]  
+    },
+    {
+        "board_size": 5,
+        "target_cells": [[0, 1],[0, 3],[0,2]],
+        "block_cells": [[1,0],[1,1],[1,3],[1,4],[2,2]],
+        "pieces": [
+            {"color": "red", "is_magnetic": true, "position": [1, 2]},
+            
+            {"color": "grey", "is_magnetic": false, "position": [0, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [0, 4]}
+        ]  
+    },
+    {
+        "board_size": 5,
+        "target_cells": [[2, 0],[1, 0],[4,0],[4,2]],
+        "block_cells": [[0,4],[1,4],[2,4],[3,4],[4,4],[0,2],[0,3],[1,2],[1,3]],
+        "pieces": [
+            {"color": "red", "is_magnetic": true, "position": [3, 1]},
+            
+            {"color": "grey", "is_magnetic": false, "position": [0, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [1, 0]},
+             {"color": "grey", "is_magnetic": false, "position": [4, 3]}
+        ]  
+    },
+    {
+        "board_size": 6,
+        "target_cells": [[0, 3],[1, 1],[2,1]],
+        "block_cells": [[1,0],[2,0],[1,4],[1,5],[2,4],[2,5], [3,0],[3,1],[3,2],[3,3],[3,4],[3,5]],
+        "pieces": [
+            {"color": "red", "is_magnetic": true, "position": [2, 3]},
+            
+            {"color": "grey", "is_magnetic": false, "position": [0, 0]},
+            {"color": "grey", "is_magnetic": false, "position": [0, 4]},
+             {"color": "grey", "is_magnetic": false, "position": [0, 5]}
+        ]  
+    },
+    {
+        "board_size": 4,
+        "target_cells": [[1, 0],[1, 2],[2,1],[2,2]],
+        "block_cells": [],
+        "pieces": [
+            {"color": "red", "is_magnetic": true, "position": [3, 3]},
+            
+            {"color": "grey", "is_magnetic": false, "position": [0, 3]},
+            {"color": "grey", "is_magnetic": false, "position": [2, 0]},
+             {"color": "grey", "is_magnetic": false, "position": [3, 0]}
+        ]  
+    },
+    {
+        "board_size": 5,
+        "target_cells": [[0, 0],[0, 2],[1,4],[2,4]],
+        "block_cells": [[3,0],[3,1],[3,2],[3,3],[3,4]],
+        "pieces": [
+            {"color": "red", "is_magnetic": true, "position": [2, 2]},
+            
+            {"color": "grey", "is_magnetic": false, "position": [0, 1]},
+            {"color": "grey", "is_magnetic": false, "position": [0, 3]},
+             {"color": "purple", "is_magnetic": true, "position": [1, 2]}
+        ]  
+    }
+]
+
+
+ 
