@@ -1,6 +1,7 @@
 # # سوف أضع تعليقات للتوضيح كيفية عمل مشروعي
 
 
+from astar import AStar
 
 from game import Game
 from utils import load_levels_from_json
@@ -32,7 +33,7 @@ def main():
     game = Game(levels, level_index=level)
     
     # Select search algorithm
-    algorithm_choice = input("Choose search algorithm (BFS/DFS/UCS/HC for Hill Climbing): ").strip().upper()
+    algorithm_choice = input("Choose search algorithm (BFS/DFS/UCS/HC for Hill Climbing/A*): ").strip().upper()
     search_algorithm = None
     
     if algorithm_choice == "BFS":
@@ -43,6 +44,8 @@ def main():
         search_algorithm = UCS(game)
     elif algorithm_choice == "HC":  
         search_algorithm = HillClimbing(game)
+    elif algorithm_choice == "A*":
+        search_algorithm = AStar(game)
         print("solving...")
     # Ensure a valid algorithm was chosen
     if search_algorithm:
